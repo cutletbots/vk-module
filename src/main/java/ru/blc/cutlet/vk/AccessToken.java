@@ -8,7 +8,7 @@ public class AccessToken {
     private final AccessTokenType type;
 
     public AccessToken(String value, AccessTokenType type) {
-        Preconditions.checkArgument(value != null && value.isEmpty(), "Token value can not be empty or null");
+        Preconditions.checkArgument(value != null && !value.isBlank(), "Token value can not be empty or null");
         this.value = value;
         Preconditions.checkNotNull(type, "Token type can not be null");
         this.type = type;
