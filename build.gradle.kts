@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "ru.cutletbots"
-version = "1.0.0"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -19,14 +19,24 @@ repositories {
     }
 }
 
+val moduleDependency by configurations.creating
+
+configurations {
+    compileClasspath {
+        extendsFrom(moduleDependency)
+    }
+
+    runtimeClasspath {
+        extendsFrom(moduleDependency)
+    }
+}
+
 dependencies {
-    api("ru.cutletbots:cutlet-api:1.0.0")
+    api("ru.cutletbots:cutlet-api:1.0.1")
 
-    compileOnly("it.unimi.dsi:fastutil:8.2.2")
-
-    implementation("org.apache.httpcomponents:httpmime:4.5.13")
-    implementation("org.apache.httpcomponents:httpclient:4.5.13")
-    implementation("org.apache.httpcomponents:httpcore:4.4.14")
+    moduleDependency("org.apache.httpcomponents:httpmime:4.5.13")
+    moduleDependency("org.apache.httpcomponents:httpclient:4.5.13")
+    moduleDependency("org.apache.httpcomponents:httpcore:4.4.14")
 
     compileOnly("org.projectlombok:lombok:1.18.22")
     annotationProcessor("org.projectlombok:lombok:1.18.22")
@@ -38,13 +48,11 @@ dependencies {
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
 }
 
-val fatJar = task("cutletRunnable", type = Jar::class) {
+val fatJar = task("fullModule", type = Jar::class) {
     group = "get-jar"
     archiveBaseName.set("${project.name}-shaded")
-    manifest {
-        attributes["Main-Class"] = "ru.blc.cutlet.api.Start"
-    }
-    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
+
+    from(configurations.getByName("moduleDependency").map { if (it.isDirectory) it else zipTree(it) })
     with(tasks.jar.get() as CopySpec)
 }
 
@@ -64,8 +72,17 @@ tasks {
     }
 }
 
+tasks.withType<Jar> {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
 tasks.getByName<Test>("test") {
     useJUnitPlatform()
+}
+
+tasks.withType<JavaCompile> {
+    sourceCompatibility = "16"
+    targetCompatibility = "16"
 }
 
 publishing {
