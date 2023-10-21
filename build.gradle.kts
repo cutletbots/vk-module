@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "ru.cutletbots"
-version = "1.0.1"
+version = "1.0.2"
 
 repositories {
     mavenCentral()
@@ -19,7 +19,10 @@ repositories {
     }
 }
 
-val moduleDependency by configurations.creating
+val apiModuleDependency by configurations.creating
+val moduleDependency by configurations.creating {
+    extendsFrom(apiModuleDependency)
+}
 
 configurations {
     compileClasspath {
@@ -29,14 +32,18 @@ configurations {
     runtimeClasspath {
         extendsFrom(moduleDependency)
     }
+
+    api {
+        extendsFrom(apiModuleDependency)
+    }
 }
 
 dependencies {
     api("ru.cutletbots:cutlet-api:1.0.1")
 
-    moduleDependency("org.apache.httpcomponents:httpmime:4.5.13")
-    moduleDependency("org.apache.httpcomponents:httpclient:4.5.13")
-    moduleDependency("org.apache.httpcomponents:httpcore:4.4.14")
+    apiModuleDependency("org.apache.httpcomponents:httpmime:4.5.13")
+    apiModuleDependency("org.apache.httpcomponents:httpclient:4.5.13")
+    apiModuleDependency("org.apache.httpcomponents:httpcore:4.4.14")
 
     compileOnly("org.projectlombok:lombok:1.18.22")
     annotationProcessor("org.projectlombok:lombok:1.18.22")
