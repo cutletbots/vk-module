@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "ru.cutletbots"
-version = "1.0.3"
+version = "1.1.0"
 
 repositories {
     mavenCentral()
@@ -39,7 +39,7 @@ configurations {
 }
 
 dependencies {
-    api("ru.cutletbots:cutlet-api:1.0.1")
+    api("ru.cutletbots:cutlet-api:1.2.0-SNAPSHOT")
 
     apiModuleDependency("org.apache.httpcomponents:httpmime:4.5.13")
     apiModuleDependency("org.apache.httpcomponents:httpclient:4.5.13")
