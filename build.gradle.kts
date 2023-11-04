@@ -39,7 +39,7 @@ configurations {
 }
 
 dependencies {
-    api("ru.cutletbots:cutlet-api:1.2.0-SNAPSHOT")
+    api("ru.cutletbots:cutlet-api:1.2.0")
 
     apiModuleDependency("org.apache.httpcomponents:httpmime:4.5.13")
     apiModuleDependency("org.apache.httpcomponents:httpclient:4.5.13")
