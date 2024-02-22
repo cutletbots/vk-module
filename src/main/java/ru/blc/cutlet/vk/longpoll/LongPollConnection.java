@@ -28,19 +28,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-//TODO два потока. Один сканит обновления и добавляет их в очередь, второй обрабатывает очередь
+/**
+ * @deprecated Use {@link LongPollManager} and {@link LongPollConnectionV2}
+ */
+@Deprecated(forRemoval = true)
 public class LongPollConnection {
     /**
      * Возвращает текущее LongPoll подключение для указанного бота
      * или создает новое, если ни одного нет
      *
      * @param bot бот
-     * @return соединение
+     * @return null
+     * @deprecated Use {@link LongPollManager} and {@link LongPollConnectionV2}
      */
+    @Deprecated(forRemoval = true)
     public static LongPollConnection getConnection(@NotNull VkBot bot) {
         LongPollConnection connection = CONNECTIONS_BY_BOT.get(bot);
         if (connection == null) {
-            connection = new LongPollConnection(bot);
+            vkModule.getLongPollManager().getConnection(bot);
+            //connection = new LongPollConnection(bot);
         }
         return connection;
     }
@@ -49,8 +55,10 @@ public class LongPollConnection {
      * Прекращает текущее LongPoll подключение для этого бота
      *
      * @param bot бот
-     * @return true, если подключение существовало, false если бот не был подключен к LongPoll
+     * @return false
+     * @deprecated Use {@link LongPollManager} and {@link LongPollConnectionV2}
      */
+    @Deprecated(forRemoval = true)
     public static boolean disconnect(@NotNull VkBot bot) {
         LongPollConnection connection = CONNECTIONS_BY_BOT.remove(bot);
         if (connection == null) {

@@ -6,7 +6,7 @@ import ru.blc.cutlet.api.command.Messenger;
 import ru.blc.cutlet.api.module.Module;
 import ru.blc.cutlet.vk.callback.CallbackServer;
 import ru.blc.cutlet.vk.command.console.SetConfirmCommand;
-import ru.blc.cutlet.vk.longpoll.LongPollConnection;
+import ru.blc.cutlet.vk.longpoll.LongPollManager;
 import ru.blc.cutlet.vk.method.Methods;
 
 import java.util.HashMap;
@@ -23,6 +23,7 @@ public class VkModule extends Module {
     private JsonHandler jsonHandler;
 
     private final Map<Integer, VkBot> callbackBots = new HashMap<>();
+    private LongPollManager longPollManager;
 
     @Override
     public void onLoad() {
@@ -39,6 +40,7 @@ public class VkModule extends Module {
                     getConfig().getString("server.ip", "0.0.0.0"),
                     getConfig().getInt("server.port", 80));
         }
+        this.longPollManager = new LongPollManager();
         getCutlet().getBotManager().registerCommand(null, new SetConfirmCommand());
     }
 
@@ -47,6 +49,7 @@ public class VkModule extends Module {
         if (getServer() != null) {
             getServer().stop();
         }
+        longPollManager.stop();
     }
 
     /**
@@ -55,6 +58,10 @@ public class VkModule extends Module {
     @Nullable
     public CallbackServer getServer() {
         return server;
+    }
+
+    public LongPollManager getLongPollManager() {
+        return longPollManager;
     }
 
     /**
@@ -91,7 +98,7 @@ public class VkModule extends Module {
             return;
         }
         if (longPoll) {
-            LongPollConnection.getConnection(bot);
+            longPollManager.getConnection(bot);
             return;
         }
         if (getServer() == null) {
@@ -107,7 +114,7 @@ public class VkModule extends Module {
      */
     public void disconnectBot(VkBot bot) {
         callbackBots.remove(bot.getGroupId());
-        LongPollConnection.disconnect(bot);
+        longPollManager.disconnect(bot);
     }
 
     /**
