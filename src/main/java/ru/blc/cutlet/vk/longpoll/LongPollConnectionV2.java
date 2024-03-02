@@ -110,8 +110,9 @@ public class LongPollConnectionV2 {
                             connectionLock.unlock();
                         }
                     });
-        } finally {
+        } catch (Exception e) {
             connectionLock.unlock();
+            return CompletableFuture.failedFuture(e);
         }
     }
 
