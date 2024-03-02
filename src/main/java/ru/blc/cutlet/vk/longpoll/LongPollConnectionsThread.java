@@ -5,6 +5,7 @@ import ru.blc.cutlet.vk.VkBot;
 import ru.blc.cutlet.vk.VkModule;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -50,6 +51,7 @@ public class LongPollConnectionsThread extends Thread {
 
             //Остановлено
             if (!conn.running()) {
+                VK_MODULE.getLogger().debug("conn for bot {} not running, it will be deleted", conn.bot().getName());
                 //не добавляем его в очередь и приступаем к следующему
                 continue;
             }
@@ -59,26 +61,30 @@ public class LongPollConnectionsThread extends Thread {
 
             //если коннект занят - кидаем в конец очереди
             if (conn.connectionLock().isLocked()) {
+                VK_MODULE.getLogger().debug("conn locked, delayed");
                 connectionQueue.add(conn);
                 continue;
             }
 
             //если коннект не готов, или обосрался ранее
             if (conn.lastUpdateFailed() || !conn.init()) {
+                VK_MODULE.getLogger().debug("conn is not normal, init...");
                 //инициализируем заново, по завершению добавляем в нашу очередь
-                conn.initConnection().whenComplete((s, throwable) -> {
-                    connectionQueue.add(conn);
-                });
+                CompletableFuture.runAsync(conn::initConnection)
+                        .whenComplete((unused, throwable) -> connectionQueue.add(conn));
+
                 continue;
             }
 
             //получаем список апдейтов
-            List<LongPollUpdate> updates = conn.getUpdates();
-            VK_MODULE.getLogger().debug("Got {} updates for bot {}", updates.size(), bot.getName());
-            //передаем их получателю
-            updatesConsumer.accept(updates);
-            //коннект в конец очереди
-            connectionQueue.add(conn);
+            CompletableFuture.supplyAsync(conn::getUpdates)
+                    .whenComplete((updates, throwable) -> {
+                        VK_MODULE.getLogger().debug("Got {} updates for bot {}", updates.size(), bot.getName());
+                        //передаем их получателю
+                        updatesConsumer.accept(updates);
+                        //коннект в конец очереди
+                        connectionQueue.add(conn);
+                    });
         }
         VK_MODULE.getLogger().info("Long Poll Connections Thread stopped");
     }

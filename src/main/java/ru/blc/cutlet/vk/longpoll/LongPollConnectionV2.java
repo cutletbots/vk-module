@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Getter
@@ -54,7 +53,10 @@ public class LongPollConnectionV2 {
         this.running = false;
     }
 
-    protected CompletableFuture<String> initConnection() {
+    /**
+     * Blocking method
+     */
+    protected void initConnection() {
         connectionLock.lock();
         init = true;
         if (lastUpdateFailed) {
@@ -62,61 +64,60 @@ public class LongPollConnectionV2 {
         }
         try {
             //задержка чтобы не ддосить вк
-            long delay;
-            if (reinitAttempts <= 3) {
-                delay = 3000;
-            } else if (reinitAttempts <= 6) {
-                delay = 5000;
-            } else if (reinitAttempts <= 10) {
-                delay = 10000;
-            } else {
-                delay = 15000;
+            if (lastUpdateFailed) {
+                long delay;
+                if (reinitAttempts <= 3) {
+                    delay = 3000;
+                } else if (reinitAttempts <= 6) {
+                    delay = 5000;
+                } else if (reinitAttempts <= 10) {
+                    delay = 10000;
+                } else {
+                    delay = 15000;
+                }
+
+                if (delay > System.currentTimeMillis() - lastReinit) {
+                    VK_MODULE.getLogger().info("Delay init via reinint attempt {}, delay = {}, timeDiff = {}",
+                            reinitAttempts, delay, System.currentTimeMillis() - lastReinit);
+                    return;
+                }
+                lastReinit = System.currentTimeMillis();
             }
 
-            if (delay > System.currentTimeMillis() - lastReinit) {
-                return CompletableFuture.completedFuture(null);
-            }
-            lastReinit = System.currentTimeMillis();
-
-            return VkModule.METHODS
+            JsonConfiguration json = JsonConfiguration.loadConfiguration(VkModule.METHODS
                     .groups
                     .getLongPollServer
                     .getNewParamsSet()
                     .setGroupId(bot.getGroupId())
                     .setToken(bot.getDefaultToken())
-                    .call()
-                    .whenComplete((s, t) -> {
-                        try {
-                            if (t != null) {
-                                bot.getLogger().error("Error while creating long poll connection for bot " + bot.getName(), t);
-                                lastUpdateFailed = true;
-                            } else {
-                                JsonConfiguration json = JsonConfiguration.loadConfiguration(s);
-                                if (json.hasValue("error")) {
-                                    lastUpdateFailed = true;
-                                    bot.getLogger().error("Error {} while creating long poll connection for bot {}. Message: {}",
-                                            json.get("error.error_code"), bot.getName(), json.get("error.error_msg"));
-                                    return;
-                                }
-                                key = json.getString("response.key");
-                                server = json.getString("response.server");
-                                ts = json.getString("response.ts");
-                                lastUpdateFailed = false;
-                                reinitAttempts = 0;
-                            }
-                        } catch (Throwable t1) {
-                            bot.getLogger().error("Error while creating long poll connection for bot " + bot.getName(), t);
-                            lastUpdateFailed = true;
-                        } finally {
-                            connectionLock.unlock();
-                        }
-                    });
-        } catch (Exception e) {
+                    .callAwait());
+            if (json.hasValue("error")) {
+                lastUpdateFailed = true;
+                bot.getLogger().error("Error {} while creating long poll connection for bot {}. Message: {}",
+                        json.get("error.error_code"), bot.getName(), json.get("error.error_msg"));
+                return;
+            }
+
+            key = json.getString("response.key");
+            server = json.getString("response.server");
+            ts = json.getString("response.ts");
+            VK_MODULE.getLogger().info("Long Poll connection for bot {} successfully started with {} attempts",
+                    bot.getName(), reinitAttempts);
+            lastUpdateFailed = false;
+            reinitAttempts = 0;
+
+        } catch (Throwable t) {
+            bot.getLogger().error("Error while creating long poll connection for bot " + bot.getName(), t);
+            lastUpdateFailed = true;
+            return;
+        } finally {
             connectionLock.unlock();
-            return CompletableFuture.failedFuture(e);
         }
     }
 
+    /**
+     * Blocking method
+     */
     protected List<LongPollUpdate> getUpdates() {
         if (lastUpdateFailed) {
             return null;
@@ -159,6 +160,8 @@ public class LongPollConnectionV2 {
             if (bytesl > 0) {
                 json = new String(data, StandardCharsets.UTF_8);
             } else {
+                VK_MODULE.getLogger().debug("Empty data at updates for bot {}", bot.getName());
+                lastUpdateFailed = true;
                 return result;
             }
             JsonConfiguration updates = JsonConfiguration.loadConfiguration(json);
@@ -181,8 +184,8 @@ public class LongPollConnectionV2 {
             VK_MODULE.getLogger().debug("Parsed {} updates for bot {}", result.size(), bot.getName());
             return result;
         } catch (IOException ex) {
-            ex.printStackTrace();
-            bot.getLogger().error("can't get updates for bot " + bot.getName(), ex);
+            lastUpdateFailed = true;
+            VK_MODULE.getLogger().error("can't get updates for bot {}", bot.getName(), ex);
         } finally {
             connectionLock.unlock();
         }
