@@ -59,9 +59,6 @@ public class LongPollConnectionV2 {
     protected void initConnection() {
         connectionLock.lock();
         init = true;
-        if (lastUpdateFailed) {
-            reinitAttempts++;
-        }
         try {
             //задержка чтобы не ддосить вк
             if (lastUpdateFailed) {
@@ -77,10 +74,9 @@ public class LongPollConnectionV2 {
                 }
 
                 if (delay > System.currentTimeMillis() - lastReinit) {
-                    VK_MODULE.getLogger().info("Delay init via reinint attempt {}, delay = {}, timeDiff = {}",
-                            reinitAttempts, delay, System.currentTimeMillis() - lastReinit);
                     return;
                 }
+                reinitAttempts++;
                 lastReinit = System.currentTimeMillis();
             }
 
