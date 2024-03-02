@@ -37,7 +37,7 @@ public class LongPollConnectionV2 {
     private boolean lastUpdateFailed = false;
 
     private int reinitAttempts = 0;
-    private long lastReinit = 0;
+    private long lastReinit;
 
     private final ReentrantLock connectionLock = new ReentrantLock();
 
@@ -62,7 +62,7 @@ public class LongPollConnectionV2 {
         }
         try {
             //задержка чтобы не ддосить вк
-            long delay = 0;
+            long delay;
             if (reinitAttempts <= 3) {
                 delay = 3000;
             } else if (reinitAttempts <= 6) {
@@ -93,6 +93,7 @@ public class LongPollConnectionV2 {
                             } else {
                                 JsonConfiguration json = JsonConfiguration.loadConfiguration(s);
                                 if (json.hasValue("error")) {
+                                    lastUpdateFailed = true;
                                     bot.getLogger().error("Error {} while creating long poll connection for bot {}. Message: {}",
                                             json.get("error.error_code"), bot.getName(), json.get("error.error_msg"));
                                     return;
